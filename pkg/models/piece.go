@@ -14,9 +14,16 @@ type Piece struct {
 	CurrentPosition  [2]int
 }
 
-func (p Piece) IsOurPathIsRight() bool {
+// TODO переделать на универсальный расчет, инвертированная доска должна работать как стартовая
+func (p Piece) IsOurPathIsRight(attack bool) bool {
 	if p.Name == "pawn" {
-		return p.PreviousPosition[0] == p.CurrentPosition[0] && (math.Abs(float64(p.PreviousPosition[1]-p.CurrentPosition[1])) == 1 || (p.PreviousPosition[1] == 1 && math.Abs(float64(p.PreviousPosition[1]-p.CurrentPosition[1])) == 2))
+		if attack && p.Color == "w" {
+			return (p.PreviousPosition[1]+1) == p.CurrentPosition[1] && ((p.PreviousPosition[0]+1) == p.CurrentPosition[0] || (p.PreviousPosition[0]-1) == p.CurrentPosition[0])
+		}
+		if attack && p.Color == "b" {
+			return (p.PreviousPosition[1]-1) == p.CurrentPosition[1] && ((p.PreviousPosition[0]+1) == p.CurrentPosition[0] || (p.PreviousPosition[0]-1) == p.CurrentPosition[0])
+		}
+		return p.PreviousPosition[0] == p.CurrentPosition[0] && (math.Abs(float64(p.PreviousPosition[1]-p.CurrentPosition[1])) == 1 || math.Abs(float64(p.PreviousPosition[1]-p.CurrentPosition[1])) == 2)
 	}
 	if p.Name == "rook" {
 		return p.PreviousPosition[0] == p.CurrentPosition[0] || p.PreviousPosition[1] == p.CurrentPosition[1]
@@ -37,14 +44,14 @@ func (p Piece) IsOurPathIsRight() bool {
 	return false
 }
 
-func (p *Piece) Move(x int, y int) {
+func (p *Piece) PeaceMove(x int, y int) {
 	var OldPrevious = p.PreviousPosition
 	p.PreviousPosition = p.CurrentPosition
 	p.CurrentPosition[0] = x
 	p.CurrentPosition[1] = y
-	if !p.IsOurPathIsRight() {
+	if !p.IsOurPathIsRight(false) {
 		p.CurrentPosition = p.PreviousPosition
 		p.PreviousPosition = OldPrevious
-		fmt.Println("Wrong move")
+		fmt.Printf("Wrong move %s%s", p.Name, p.Color)
 	}
 }

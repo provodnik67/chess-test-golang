@@ -2,6 +2,7 @@ package main
 
 import (
 	"chess/pkg/models"
+	"errors"
 	"fmt"
 	"math"
 
@@ -46,7 +47,27 @@ func main() {
 	field.Pieces = append(field.Pieces, models.Piece{Name: King, CurrentPosition: [2]int{4, 0}, Color: White})
 	field.Pieces = append(field.Pieces, models.Piece{Name: King, CurrentPosition: [2]int{4, 7}, Color: Black})
 
-	MakeAMove(&field, [2]int{3, 1}, [2]int{3, 2})
+	_, err := MakeAMove(&field, [2]int{3, 1}, [2]int{3, 3})
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	_, err = MakeAMove(&field, [2]int{3, 6}, [2]int{3, 4})
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	_, err = MakeAMove(&field, [2]int{4, 1}, [2]int{4, 3})
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	//черные атакуют
+	_, err = TryToAttack(&field, [2]int{3, 4}, [2]int{4, 3})
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
 
 	const S = 1024
 	dc := gg.NewContext(S, S)
@@ -65,11 +86,50 @@ func main() {
 	dc.SavePNG("out.png")
 }
 
-func MakeAMove(field *models.Field, from [2]int, to [2]int) {
+// TODO на последней линии противника пешка становится любой другой фигурой на выбор
+// TODO добавить проверку выхода за игровое поле
+func MakeAMove(field *models.Field, from [2]int, to [2]int) (bool, error) {
+	pieceToMove := len(field.Pieces)
 	for i, p := range field.Pieces {
 		if p.CurrentPosition[0] == from[0] && p.CurrentPosition[1] == from[1] {
-			field.Pieces[i].Move(to[0], to[1])
-			break
+			pieceToMove = i
+		}
+		if p.CurrentPosition[0] == to[0] && p.CurrentPosition[1] == to[1] {
+			return false, fmt.Errorf("%d - %d the place is occupied", to[0], to[1])
 		}
 	}
+	if pieceToMove == len(field.Pieces) {
+		return false, fmt.Errorf("%d - %d the piece doesn't exist", from[0], from[1])
+	}
+	field.Pieces[pieceToMove].PeaceMove(to[0], to[1])
+	return true, nil
+}
+
+func TryToAttack(field *models.Field, from [2]int, to [2]int) (bool, error) {
+	attackingPiece := len(field.Pieces)
+	attackedPiece := attackingPiece
+	for i, p := range field.Pieces {
+		if p.CurrentPosition[0] == from[0] && p.CurrentPosition[1] == from[1] {
+			attackingPiece = i
+		}
+		if p.CurrentPosition[0] == to[0] && p.CurrentPosition[1] == to[1] {
+			attackedPiece = i
+		}
+	}
+	if attackingPiece == len(field.Pieces) {
+		return false, errors.New("attacking piece doesn't exist")
+	}
+	if attackedPiece == len(field.Pieces) {
+		return false, errors.New("attacked piece doesn't exist")
+	}
+	var OldPrevious = field.Pieces[attackingPiece].PreviousPosition
+	field.Pieces[attackingPiece].PreviousPosition = field.Pieces[attackingPiece].CurrentPosition
+	field.Pieces[attackingPiece].CurrentPosition = to
+	if !field.Pieces[attackingPiece].IsOurPathIsRight(true) {
+		field.Pieces[attackingPiece].CurrentPosition = field.Pieces[attackingPiece].PreviousPosition
+		field.Pieces[attackingPiece].PreviousPosition = OldPrevious
+		return false, fmt.Errorf("%s%s %d%d wrong move", field.Pieces[attackingPiece].Name, field.Pieces[attackingPiece].Color, to[0], to[1])
+	}
+	field.Pieces = append(field.Pieces[:attackedPiece], field.Pieces[attackedPiece+1:]...)
+	return true, nil
 }
