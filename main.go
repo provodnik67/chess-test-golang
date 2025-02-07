@@ -21,7 +21,7 @@ const (
 )
 
 func main() {
-	field := models.Field{Size: [2]int{8, 8}}
+	field := models.Field{Size: [2]int{8, 8}, Move: White}
 	for i := 0; i <= 7; i++ {
 		field.Pieces = append(field.Pieces, models.Piece{Name: Pawn, CurrentPosition: [2]int{i, 1}, Color: White})
 		field.Pieces = append(field.Pieces, models.Piece{Name: Pawn, CurrentPosition: [2]int{i, 6}, Color: Black})
@@ -101,7 +101,15 @@ func MakeAMove(field *models.Field, from [2]int, to [2]int) (bool, error) {
 	if pieceToMove == len(field.Pieces) {
 		return false, fmt.Errorf("%d - %d the piece doesn't exist", from[0], from[1])
 	}
+	if field.Pieces[pieceToMove].Color != field.Move {
+		return false, fmt.Errorf("not your turn, piece should be %s color", field.Move)
+	}
 	field.Pieces[pieceToMove].PeaceMove(to[0], to[1])
+	if field.Move == White {
+		field.Move = Black
+	} else {
+		field.Move = White
+	}
 	return true, nil
 }
 
