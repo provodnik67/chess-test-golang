@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/rand"
+	"time"
 
 	"github.com/fogleman/gg"
 )
@@ -23,8 +25,8 @@ const (
 func main() {
 	field := models.Field{Size: [2]int{8, 8}, Move: White}
 	for i := 0; i <= 7; i++ {
-		field.Pieces = append(field.Pieces, models.Piece{Name: Pawn, CurrentPosition: [2]int{i, 1}, Color: White})
-		field.Pieces = append(field.Pieces, models.Piece{Name: Pawn, CurrentPosition: [2]int{i, 6}, Color: Black})
+		field.Pieces = append(field.Pieces, models.Piece{Name: Pawn, CurrentPosition: [2]int{i, 1}, Color: White, Health: 10, BaseDamage: 10, Chance: 0.5})
+		field.Pieces = append(field.Pieces, models.Piece{Name: Pawn, CurrentPosition: [2]int{i, 6}, Color: Black, Health: 10, BaseDamage: 10, Chance: 0.5})
 	}
 	field.Pieces = append(field.Pieces, models.Piece{Name: Rook, CurrentPosition: [2]int{0, 0}, Color: White})
 	field.Pieces = append(field.Pieces, models.Piece{Name: Rook, CurrentPosition: [2]int{7, 0}, Color: White})
@@ -81,7 +83,7 @@ func main() {
 	}
 	dc.Stroke()
 	for _, p := range field.Pieces {
-		dc.DrawStringAnchored(fmt.Sprintf("%s%s", p.Name, p.Color), (S/8)*(float64(p.CurrentPosition[0])+0.5), (S/8)*(math.Abs(float64(p.CurrentPosition[1])-7)+0.5), 0.5, 0.5)
+		dc.DrawStringAnchored(fmt.Sprintf("%s|%s|%d|%.2f", p.Name, p.Color, p.Health, p.Chance), (S/8)*(float64(p.CurrentPosition[0])+0.5), (S/8)*(math.Abs(float64(p.CurrentPosition[1])-7)+0.5), 0.5, 0.5)
 	}
 	dc.SavePNG("out.png")
 }
@@ -110,6 +112,7 @@ func MakeAMove(field *models.Field, from [2]int, to [2]int) (bool, error) {
 	} else {
 		field.Move = White
 	}
+	field.Pieces[pieceToMove].Chance = field.Pieces[pieceToMove].Chance - 0.1
 	return true, nil
 }
 
@@ -138,6 +141,18 @@ func TryToAttack(field *models.Field, from [2]int, to [2]int) (bool, error) {
 		field.Pieces[attackingPiece].PreviousPosition = OldPrevious
 		return false, fmt.Errorf("%s%s %d%d wrong move", field.Pieces[attackingPiece].Name, field.Pieces[attackingPiece].Color, to[0], to[1])
 	}
+	rand.Seed(time.Now().UnixNano())
+	if field.Pieces[attackingPiece].Chance < rand.Float64() {
+		field.Pieces[attackingPiece].CurrentPosition = field.Pieces[attackingPiece].PreviousPosition
+		field.Pieces[attackingPiece].PreviousPosition = OldPrevious
+		return false, fmt.Errorf("%s%s %d%d missed with the chance %.2f", field.Pieces[attackingPiece].Name, field.Pieces[attackingPiece].Color, to[0], to[1], field.Pieces[attackingPiece].Chance)
+	}
+
 	field.Pieces = append(field.Pieces[:attackedPiece], field.Pieces[attackedPiece+1:]...)
+	if field.Move == White {
+		field.Move = Black
+	} else {
+		field.Move = White
+	}
 	return true, nil
 }

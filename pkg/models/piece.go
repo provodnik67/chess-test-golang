@@ -12,6 +12,7 @@ type Piece struct {
 	BaseDamage       int
 	PreviousPosition [2]int
 	CurrentPosition  [2]int
+	Chance           float64
 }
 
 // TODO переделать на универсальный расчет, инвертированная доска должна работать как стартовая
